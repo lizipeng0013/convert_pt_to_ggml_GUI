@@ -93,7 +93,7 @@ class mainwindow(QMainWindow):
         self.ui.whisper_lineEdit.setText(whisper_path)
     
     def on_output_pushButton_clicked(self):
-        dirOutput = QFileDialog.getExistingDirectory(self, "选择python.exe文件", "D:\\")
+        dirOutput = QFileDialog.getExistingDirectory(self, "选择输出文件夹", "D:\\")
         if dirOutput == "":
             return
         
