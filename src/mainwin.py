@@ -3,6 +3,8 @@ import io
 import os
 import struct
 import subprocess
+import sys
+import platform
 
 import numpy as np
 import torch
@@ -27,9 +29,22 @@ class mainwindow(QMainWindow):
     def __init__(self):
         super().__init__()
         # PyQt5
-        self.ui = uic.loadUi("../UI/UI")
-        # 这里与静态载入不同，使用 self.ui.show()
-        # 如果使用 self.show(),会产生一个空白的 MainWindow
+        # 获取当前脚本目录
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # 构建UI文件路径
+        ui_path = os.path.join(current_dir, "..", "UI", "UI.ui")  # 添加.ui扩展名
+        
+        # 检查文件是否存在
+        if not os.path.exists(ui_path):
+            # 尝试无扩展名版本
+            ui_path_no_ext = os.path.join(current_dir, "..", "UI", "UI")
+            if os.path.exists(ui_path_no_ext):
+                ui_path = ui_path_no_ext
+            else:
+                raise FileNotFoundError(f"UI file not found at: {ui_path} or {ui_path_no_ext}")
+        
+        # 加载UI文件
+        self.ui = uic.loadUi(ui_path)
         
         self.custom_init()
         self.ui.show()
@@ -90,21 +105,23 @@ class mainwindow(QMainWindow):
     
     def process_over(self, poll: int):
         if poll == 0:
-            yes_No = QMessageBox.warning(self, "处理完毕", "处理结束！ 是否打开输出文件夹？", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            yes_No = QMessageBox.warning(self, "处理完毕", "处理结束！ 是否打开输出文件夹？", 
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             
             if yes_No == QMessageBox.Yes:
-
-                out_dir = self.ui.output_lineEdit.text()
-                out_dir = "\\".join(out_dir.split("/"))
+                out_dir = os.path.normpath(self.ui.output_lineEdit.text())
                 
-                commandLine = ["cmd", "/c", "explorer.exe", out_dir]
-                
-                print(" ".join(commandLine))
-                res = subprocess.Popen(commandLine, creationflags=subprocess.CREATE_NO_WINDOW, text=True, stdout=subprocess.PIPE)
-                # for line in res.stdout:
-                #     print(line)
-                #
-                res.wait()
+                # 跨平台打开文件夹
+                try:
+                    if platform.system() == 'Windows':
+                        os.startfile(out_dir)
+                    elif platform.system() == 'Darwin':  # macOS
+                        subprocess.Popen(['open', out_dir])
+                    else:  # Linux和其他Unix-like系统
+                        subprocess.Popen(['xdg-open', out_dir])
+                except Exception as e:
+                    self.signalStore.output.emit(f"打开文件夹失败: {str(e)}")
+                    QMessageBox.warning(self, "错误", f"无法打开文件夹:\n{str(e)}")
         
         if poll != 0:
             QMessageBox.warning(self, "错误", "处理出错，请检查输入文件及输出文件夹")
